@@ -2,9 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.mjs'
-console.log("DB URL Check:", process.env.DATABASE_URL ? "FOUND ✅" : "NOT FOUND ❌");
+import taskRoutes from './routes/taskRoutes.mjs';
 
-console.log("--- DEBUG: APP STARTING ---");
 // 1. Load Environment Variables
 dotenv.config();
 
@@ -23,6 +22,7 @@ app.get('/health', (req, res) => {
   });
 });
 app.use('/api/auth',authRoutes);
+app.use('/api/task',taskRoutes);
 
 console.log("--- DEBUG: APP REACHED END ---");
 // 4. Start the Engine
