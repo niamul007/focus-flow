@@ -1,8 +1,15 @@
 import express from 'express';
-import { register , login } from '../controllers/authController.mjs';
+import { register, login } from '../controllers/authController.mjs';
+import { protect } from '../middleware/authMiddleware.mjs'; // <--- Add this!
 
 const router = express.Router();
 
-router.post("/signup",register);
-router.post("/login", login)
-export default router ; 
+// This is your "Private" route
+router.get("/me", protect, (req, res) => {
+  res.json({ message: "You are authorized!", user: req.user });
+});
+
+router.post("/signup", register);
+router.post("/login", login);
+
+export default router;
