@@ -1,4 +1,4 @@
-import pool from "../config/db.mjs";
+import pool from "../db/index.mjs";
 
 export const createNewTask = async (userId, title) => {
   // Write the SQL Query:

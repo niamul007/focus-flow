@@ -24,11 +24,9 @@ app.get('/health', (req, res) => {
 });
 app.use('/api/auth',authRoutes);
 app.use('/api/task',taskRoutes);
-app.all('*', (req, res, next) => {
-  const err = new Error(`Can't find ${req.originalUrl} on this server!`);
-  err.statusCode = 404;
-  next(err); // Passing an argument to next() always triggers the Error Handler
-});
+app.use((req, res, next) => {
+    next(new AppError(`can't find ${req.originalUrl} on this server`, 404));
+})
 console.log("--- DEBUG: APP REACHED END ---");
 
 app.use(globalErrorHandler)
