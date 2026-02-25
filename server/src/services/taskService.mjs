@@ -42,5 +42,17 @@ export const updateTaskStatus = async (taskId, userId, completed) => {
 
 
 
-
+/**
+ * Edits the title of an existing task
+ */
+export const editTaskTitle = async (taskId, userId, newTitle) => {
+  const sql = `
+    UPDATE tasks 
+    SET title = $1 
+    WHERE id = $2 AND user_id = $3 
+    RETURNING *`;
+  
+  const result = await pool.query(sql, [newTitle, taskId, userId]);
+  return result.rows[0];
+};
 
