@@ -108,3 +108,28 @@ export const removeTask = async (req, res) => {
     res.status(500).json({ status: "error", message: err.message });
   }
 };
+
+export const updateTaskTitle = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { title } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ message: "New title is required" });
+    }
+
+    const task = await taskService.editTaskTitle(id, userId, title);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found or unauthorized" });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: { task },
+    });
+  } catch (err) {
+    res.status(500).json({ status: "error", message: err.message });
+  }
+};
