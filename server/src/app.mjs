@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.mjs'
 import taskRoutes from './routes/taskRoutes.mjs';
+import { globalErrorHandler } from './middleware/errorMiddleware.mjs';
 
 // 1. Load Environment Variables
 dotenv.config();
@@ -23,8 +24,14 @@ app.get('/health', (req, res) => {
 });
 app.use('/api/auth',authRoutes);
 app.use('/api/task',taskRoutes);
-
+app.all('*', (req, res, next) => {
+  const err = new Error(`Can't find ${req.originalUrl} on this server!`);
+  err.statusCode = 404;
+  next(err); // Passing an argument to next() always triggers the Error Handler
+});
 console.log("--- DEBUG: APP REACHED END ---");
+
+app.use(globalErrorHandler)
 // 4. Start the Engine
 // 4. Start the Engine
 const server = app.listen(PORT, () => {
