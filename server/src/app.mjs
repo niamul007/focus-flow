@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.mjs'
 import taskRoutes from './routes/taskRoutes.mjs';
 import { globalErrorHandler } from './middleware/errorMiddleware.mjs';
+import AppError from './utils/appError.mjs'
 
 // 1. Load Environment Variables
 dotenv.config();
@@ -22,6 +23,7 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
 app.use('/api/auth',authRoutes);
 app.use('/api/task',taskRoutes);
 app.use((req, res, next) => {

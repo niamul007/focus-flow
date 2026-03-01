@@ -4,71 +4,69 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 export const register = async (req, res) => {
-  // 2. Extract data
-  const { email, password } = req.body;
-
-  // 3. Validation (Email OR Password missing)
-  if (!email || !password) {
-    return res.status(400).json({
-      status: "Failed",
-      message: "Email and password are required",
-    });
-  }
-
+  const { email, password, username } = req.body; // Added 'name' here
   try {
-    // 4. Call the worker
-    const user = await authService.registerUser(email, password);
+    // 1. Save the user to the database
+    const user = await authService.registerUser(email, password, username);
 
-    // 5. Success!
+    // 2. CREATE THE TOKEN (The missing piece!)
+    const token = jwt.sign(
+      { id: user.id }, 
+      process.env.JWT_SECRET || 'dev_secret_key', 
+      { expiresIn: '1d' }
+    );
+
+    // 3. SEND EVERYTHING BACK
     res.status(201).json({
       status: "success",
-      data: { user },
+      token: token, // <--- NOW YOU WILL SEE IT
+      message: "Welcome to FocusFlow!",
+      data: { 
+        user: { 
+          id: user.id, 
+          email: user.email,
+          name: user.username || "New User" // <--- SHOWING THE NAME
+        } 
+      },
     });
   } catch (err) {
-    // 6. Send error instead of throwing it
-    console.error("DETAILED ERROR:", err); // <--- Add this line
-    res.status(500).json({
-      status: "error",
-      message: err.message,
-    });
+    console.error("REGISTER ERROR:", err);
+    res.status(500).json({ status: "error", message: err.message });
   }
 };
 
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // 1. Call your function: findUserByEmail
     const user = await authService.findUserByEmail(email);
 
-    // 2. If the user doesn't exist, stop here!
     if (!user) {
-      return res.status(401).json({ message: "Invalid Credentials" });
+      return res.status(401).json({ status: "fail", message: "Invalid Credentials" });
     }
 
-    // 3. Compare the plain password with the HASH from the DB
     const isMatch = await bcrypt.compare(password, user.password_hash);
-
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid Credentials" });
+      return res.status(401).json({ status: "fail", message: "Invalid Credentials" });
     }
 
-    // 4. Generate the "Passport" (Token)
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+    // 1. Generate the token
+    const token = jwt.sign(
+      { id: user.id }, 
+      process.env.JWT_SECRET || 'dev_secret_key', 
+      { expiresIn: '1d' }
+    );
 
-    // 4. Success!
-    res.status(200).json({
+    // 2. SEND IT (Notice the token is right here at the top)
+    return res.status(200).json({
       status: "success",
-      message: "Login successful!",
+      token: token, 
+      message: "NIAMUL_VERIFIED_LOGIN",
       data: {
-        user: { id: user.id, email: user.email },
-        token: token,
-      },
+        user: { id: user.id, email: user.email }
+      }
     });
   } catch (err) {
     console.error("LOGIN ERROR:", err);
-    res.status(500).json({ status: "error", message: "Internal Server Error" });
+    res.status(500).json({ status: "error", message: "Check server terminal" });
   }
 };

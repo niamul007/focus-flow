@@ -1,15 +1,15 @@
 import pool from "../db/index.mjs";
 
-export const createNewTask = async (userId, title) => {
-  // Write the SQL Query:
-  // INSERT INTO tasks (user_id, title) VALUES ($1, $2) RETURNING *;
-  const sql = `INSERT INTO tasks (user_id , title) VALUES($1,$2) RETURNING *`;
+// 1. Add 'description' to the parameters
+export const createNewTask = async (userId, title, description) => {
+  
+  // 2. Add 'description' to the SQL columns and add $3
+  const sql = `INSERT INTO tasks (user_id, title, description) VALUES($1, $2, $3) RETURNING *`;
 
-  // Use the 'pool' to execute the query.
-  const result = await pool.query(sql,[userId,title])
+  // 3. Add 'description' to the array
+  const result = await pool.query(sql, [userId, title, description]);
 
-  // Return the result.rows[0];
-  return result.rows[0]
+  return result.rows[0];
 };
 
 

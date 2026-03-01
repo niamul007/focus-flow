@@ -11,7 +11,9 @@ router.get("/me", protect, (req, res) => {
   res.json({ message: "You are authorized!", user: req.user });
 });
 
-router.post("/signup", validate(signupSchema), register);
+// routes/auth.mjs
+router.post("/register", validate(signupSchema), register);
 router.post("/login", validate(loginSchema), login);
 
 export default router;
+

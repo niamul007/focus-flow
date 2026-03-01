@@ -34,21 +34,18 @@ export const getTasks = async (req, res) => {
  * @desc    Create a new task for the authenticated user
  * @access  Private
  */
+// src/controllers/taskController.mjs
 export const createTask = async (req, res) => {
+  const { title, description } = req.body;
+  const userId = req.user.id; 
+
   try {
-    const { title } = req.body;
-    const userId = req.user.id;
-
-    // Validation: Ensure the user actually sent a title
-    if (!title) {
-      return res.status(400).json({ message: "Task title is required" });
-    }
-
-    const task = await taskService.createNewTask(userId, title);
+    // PASS ALL THREE: userId, title, description
+    const newTask = await taskService.createNewTask(userId, title, description);
 
     res.status(201).json({
       status: "success",
-      data: { task },
+      data: { task: newTask }
     });
   } catch (err) {
     res.status(500).json({ status: "error", message: err.message });

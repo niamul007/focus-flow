@@ -2,26 +2,26 @@ import pool from '../db/index.mjs'
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
-export const registerUser = async (email, password) => {
-    // 1. Check if user already exists
+// 1. ADD 'name' TO THE PARAMETERS HERE:
+export const registerUser = async (email, password, username) => {
+    // Check if user already exists
     const userExists = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (userExists.rows.length > 0) {
         throw new Error('User already exists with this email');
     }
 
-    // 2. Hash the password (Leaving the comfort zone!)
+    // Hash the password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // 3. Save to Neon
+    // 2. NOW 'name' IS DEFINED AND CAN BE SAVED!
     const newUser = await pool.query(
-        'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email',
-        [email, hashedPassword]
-    );
+    'INSERT INTO users (email, password_hash, username) VALUES ($1, $2, $3) RETURNING id, email, username',
+    [email, hashedPassword, username] 
+  );
 
     return newUser.rows[0];
 };
-
 
 export const findUserByEmail = async (email) => {
     // We use a try/catch here in case the database is down
@@ -36,5 +36,27 @@ export const findUserByEmail = async (email) => {
 }
 
 export const loginUser = async (email, password) => {
-    // Logic for login will go here next...
+    // 1. Find the user by email
+    const user = await findUserByEmail(email);
+
+    // 2. If no user exists, we throw a 401-style error
+    if (!user) {
+        const error = new Error('Invalid email or password');
+        error.statusCode = 401;
+        throw error;
+    }
+
+    // 3. Compare the "Plain Text" password from the user 
+    // with the "Hashed" password from Neon
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+
+    if (!isMatch) {
+        const error = new Error('Invalid email or password');
+        error.statusCode = 401;
+        throw error;
+    }
+
+    // 4. If everything is correct, return the user (without the hash!)
+    const { password_hash, ...userWithoutHash } = user;
+    return userWithoutHash;
 };
