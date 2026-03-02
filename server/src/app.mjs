@@ -1,53 +1,41 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import authRoutes from './routes/auth.mjs'
+import authRoutes from './routes/auth.mjs';
 import taskRoutes from './routes/taskRoutes.mjs';
 import { globalErrorHandler } from './middleware/errorMiddleware.mjs';
-import AppError from './utils/appError.mjs'
+import AppError from './utils/appError.mjs';
 
-// 1. Load Environment Variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// 2. Global Middlewares
-app.use(cors());          // Allows Frontend to talk to Backend
-app.use(express.json());  // Allows Server to read JSON data
+// Global Middlewares
+app.use(cors()); 
+app.use(express.json()); 
 
-// 3. The "Heartbeat" Route
+// Heartbeat
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'FocusFlow Server is flowing... 🌊',
-    timestamp: new Date().toISOString()
-  });
+  res.status(200).json({ status: 'FocusFlow Server is flowing... 🌊' });
 });
 
-app.use('/api/auth',authRoutes);
-app.use('/api/task',taskRoutes);
+// ROUTES - Changed '/api/task' to '/api/tasks' to match Frontend plural calls
+app.use('/api/auth', authRoutes);
+app.use('/api/tasks', taskRoutes); 
+
+// 404 Handler for undefined routes
 app.use((req, res, next) => {
-    next(new AppError(`can't find ${req.originalUrl} on this server`, 404));
-})
-console.log("--- DEBUG: APP REACHED END ---");
-
-app.use(globalErrorHandler)
-// 4. Start the Engine
-// 4. Start the Engine
-const server = app.listen(PORT, () => {
-  console.log(`
-  🚀 Server is running!
-  📡 URL: http://localhost:${PORT}
-  🛠️ Mode: Development
-  `);
+  next(new AppError(`Can't find ${req.originalUrl} on this server`, 404));
 });
 
-// ADD THIS: Keep the process alive manually for 24 hours
-// This is a "hack" to see if the server stays open
-setInterval(() => {
-  // This empty function keeps the Event Loop "busy" so it won't exit
-}, 1000 * 60 * 60); 
+// Global Error Handler
+app.use(globalErrorHandler);
 
-server.on('error', (err) => {
-  console.error("Critical Server Error:", err);
+app.listen(PORT, () => {
+  console.log(`
+  🚀 FocusFlow Engine Started!
+  📡 URL: http://localhost:${PORT}
+  🛠️  Routes: /api/auth & /api/tasks
+  `);
 });
