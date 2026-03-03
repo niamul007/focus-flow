@@ -11,29 +11,29 @@ const Dashboard = () => {
 
   // 1. Fetch Missions from Database on Load (Persistence Fix)
   // Inside Dashboard.jsx
-useEffect(() => {
-  const fetchMissions = async () => {
-    if (!user?.id) return;
-    try {
-      const response = await API.get('/tasks');
-      
-      // We need to go: response.data (Axios) -> .data (Your Controller) -> .tasks (The Array)
-      const actualTasks = response.data?.data?.tasks;
+  useEffect(() => {
+    const fetchMissions = async () => {
+      if (!user?.id) return;
+      try {
+        const response = await API.get("/tasks");
 
-      if (Array.isArray(actualTasks)) {
-        setTasks(actualTasks);
-      } else {
-        console.error("Data received is not an array:", actualTasks);
-        setTasks([]); // Stop the spinner even if data is weird
+        // We need to go: response.data (Axios) -> .data (Your Controller) -> .tasks (The Array)
+        const actualTasks = response.data?.data?.tasks;
+
+        if (Array.isArray(actualTasks)) {
+          setTasks(actualTasks);
+        } else {
+          console.error("Data received is not an array:", actualTasks);
+          setTasks([]); // Stop the spinner even if data is weird
+        }
+      } catch (err) {
+        console.error("Failed to fetch missions:", err);
+        setTasks([]);
       }
-    } catch (err) {
-      console.error("Failed to fetch missions:", err);
-      setTasks([]); 
-    }
-  };
+    };
 
-  fetchMissions();
-}, [user?.id]);
+    fetchMissions();
+  }, [user?.id]);
   // 2. Logic to handle auto-completion of tasks via the Timer
   const handleTimerComplete = async () => {
     if (activeTaskId) {
