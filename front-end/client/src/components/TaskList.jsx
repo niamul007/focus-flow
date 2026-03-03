@@ -1,18 +1,29 @@
 import { useState } from "react";
 import API from "../api/axios";
 
+/**
+ * TASKLIST COMPONENT
+ * -------------------
+ * This component handles the 'CRUD' (Create, Read, Update, Delete) operations
+ * for the user's missions. It communicates directly with the Backend via the API tool.
+ */
 const TaskList = ({
-  tasks = [],
-  setTasks,
-  activeTaskId,
-  setActiveTaskId,
-  user,
+  tasks = [], // Default to empty array to prevent .map() crashes
+  setTasks, // Function to update the global task state
+  activeTaskId, // The ID of the task currently in the Pomodoro timer
+  setActiveTaskId, // Function to change the active timer task
+  user, // Current logged-in pilot info
 }) => {
+  // 1. LOCAL FORM STATE: Temporary storage for what the user is typing
   const [inputValue, setInputValue] = useState("");
   const [descValue, setDescValue] = useState("");
   const [status, setStatus] = useState("todo");
 
-  // SAFETY GUARD: If tasks is not an array (null or object), prevent crash
+  /**
+   * 2. THE SAFETY GUARD (The Bouncer)
+   * If 'tasks' isn't an array yet (loading or error), we show a
+   * 'Synchronizing' spinner instead of crashing the app.
+   */
   if (!Array.isArray(tasks)) {
     return (
       <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[3rem] border border-dashed border-slate-200">
@@ -24,18 +35,21 @@ const TaskList = ({
     );
   }
 
-  // Stats logic (Now safe because of the guard above)
+  // 3. COMPUTED STATS: Derived data calculated on every render
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === "completed").length;
   const completionRate =
     totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
-  // 1. PERSISTENT ADD
+  /**
+   * 4. PERSISTENT ADD (Create)
+   * Sends the new mission to the database.
+   */
   const addTask = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
-    // IMPORTANT: Your controller expects 'title', but your state is 'inputValue'
+    // We map our UI names (inputValue) to Backend names (title)
     const newTaskData = {
       title: inputValue,
       description: descValue,
@@ -43,10 +57,13 @@ const TaskList = ({
 
     try {
       const response = await API.post("/tasks", newTaskData);
-      // Digging into the response:
+      // Digging into the standard response structure: { data: { task: {...} } }
       const newTask = response.data.data.task;
+
+      // Update the UI by 'spreading' the old tasks and adding the new one
       setTasks((prev) => [...prev, newTask]);
 
+      // Reset form fields
       setInputValue("");
       setDescValue("");
     } catch (err) {
@@ -54,17 +71,23 @@ const TaskList = ({
     }
   };
 
-  // 2. PERSISTENT TOGGLE COMPLETE
+  /**
+   * 5. PERSISTENT TOGGLE (Update)
+   * Flips the status between 'todo' and 'completed' on the server.
+   */
   const toggleComplete = async (task) => {
     const newStatus = task.status === "completed" ? "todo" : "completed";
     try {
+      // We use PATCH to only update the 'status' field
       const response = await API.patch(`/tasks/${task.id}`, {
         status: newStatus,
       });
       const updatedTask = response.data.data || response.data;
 
+      // Update the specific task in the list while keeping others the same
       setTasks((prev) => prev.map((t) => (t.id === task.id ? updatedTask : t)));
 
+      // If the task we just completed was in the timer, stop the timer.
       if (newStatus === "completed" && activeTaskId === task.id) {
         setActiveTaskId(null);
       }
@@ -73,17 +96,22 @@ const TaskList = ({
     }
   };
 
-  // 3. PERSISTENT DELETE
+  /**
+   * 6. PERSISTENT DELETE (Destroy)
+   * Removes the mission from the database and the UI.
+   */
   const deleteTask = async (taskId) => {
     try {
       await API.delete(`/tasks/${taskId}`);
+      // Filter out the deleted task from the local state
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
+
+      // Clear the timer if we just deleted the active task
       if (activeTaskId === taskId) setActiveTaskId(null);
     } catch (err) {
       console.error("Error deleting task:", err);
     }
   };
-
   return (
     <div className="w-full space-y-8">
       {/* STATS BAR */}
