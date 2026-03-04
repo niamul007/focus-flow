@@ -1,22 +1,51 @@
 import { useState, useEffect } from 'react';
 
+/**
+ * TIMER COMPONENT
+ * ---------------
+ * Purpose: A high-precision countdown engine for Pomodoro sessions.
+ * @param {Function} onComplete - Callback triggered when the clock hits 00:00.
+ * @param {Boolean} isActiveTask - Prevents the timer from starting if no mission is selected.
+ */
 const Timer = ({ onComplete, isActiveTask }) => {
-  const [seconds, setSeconds] = useState(25 * 60);
+  // 1. STATE: We track time in TOTAL SECONDS (easier for math than tracking mins/secs separately).
+  const [seconds, setSeconds] = useState(25 * 60); 
   const [isActive, setIsActive] = useState(false);
 
+  /**
+   * 2. THE ENGINE (useEffect)
+   * This is the "Gravity" of the app. It pulls the time down every 1000ms.
+   */
   useEffect(() => {
     let interval = null;
+
+    // A. The Countdown Logic
     if (isActive && seconds > 0) {
       interval = setInterval(() => setSeconds(s => s - 1), 1000);
-    } else if (seconds === 0) {
+    } 
+    // B. The Finish Line
+    else if (seconds === 0) {
       setIsActive(false);
-      onComplete(); 
+      onComplete(); // Tells the parent (Dashboard) the mission is accomplished
     }
+
+    // C. THE CLEANUP: Extremely important! 
+    // This kills the interval when the component disappears to prevent memory leaks.
     return () => clearInterval(interval);
   }, [isActive, seconds, onComplete]);
 
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+  /**
+   * 3. THE "PILOT MATH" (Formatting)
+   * We take the raw seconds and turn them into a human-readable format.
+   */
+  
+  // Math.floor chops off the decimals to give us whole minutes.
+  const mins = Math.floor(seconds / 60); 
+  
+  // The Modulo (%) gives us the remaining seconds after minutes are taken out.
+  const secs = seconds % 60; 
+
+  // ... (JSX to display the mins and secs follows)
 
   return (
     <div className="flex flex-col items-center py-4">
