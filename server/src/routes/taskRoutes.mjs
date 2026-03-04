@@ -6,12 +6,17 @@ import { createTaskSchema } from '../validations/taskValidation.mjs';
 
 const router = express.Router();
 
-router.use(protect); // The Bouncer protects all task routes
+router.use(protect); 
 
-router.get('/', taskCtrl.getTasks);      // GET all my tasks
-router.post('/',validate(createTaskSchema), taskCtrl.createTask);    // POST a new task
-router.patch('/:id', taskCtrl.updateTask); // PATCH (update) a specific task
-router.delete('/:id', taskCtrl.removeTask); // DELETE a specific task
-router.put('/:id', taskCtrl.updateTaskTitle); //To update the title 
+router.get('/', taskCtrl.getTasks);
+router.post('/', validate(createTaskSchema), taskCtrl.createTask);
+
+// ✅ CHANGE THIS: Point it to the handler that handles Title + Description
+router.patch('/:id', taskCtrl.updateTaskContent); 
+
+router.delete('/:id', taskCtrl.removeTask);
+
+// 💡 You can remove the PUT route now, as PATCH is more standard for updates
+// router.put('/:id', taskCtrl.updateTaskTitle); 
 
 export default router;
