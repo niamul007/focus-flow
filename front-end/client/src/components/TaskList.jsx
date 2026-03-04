@@ -18,6 +18,28 @@ const TaskList = ({
   const [inputValue, setInputValue] = useState("");
   const [descValue, setDescValue] = useState("");
   const [status, setStatus] = useState("todo");
+  // 1. In your State definition (Top of Component)
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState(""); // We will use 'editTitle'
+  const [editDesc, setEditDesc] = useState("");
+
+  // 2. In your saveEdit function
+  const saveEdit = async (id) => {
+    try {
+      const response = await API.patch(`/tasks/${id}`, {
+        title: editTitle,
+        description: editDesc,
+      });
+
+      // Extract the updated task from the nested data structure
+      const updatedTask = response.data.data?.task || response.data;
+
+      setTasks((prev) => prev.map((t) => (t.id === id ? updatedTask : t)));
+      setEditingId(null);
+    } catch (err) {
+      console.error("Failed to save edit:", err);
+    }
+  };
 
   /**
    * 2. THE SAFETY GUARD (The Bouncer)
@@ -49,53 +71,49 @@ const TaskList = ({
     e.preventDefault();
     if (!inputValue.trim()) return;
 
-    // We map our UI names (inputValue) to Backend names (title)
     const newTaskData = {
       title: inputValue,
       description: descValue,
+      status: status, // This will now send 'pending', 'in-progress', or 'completed'
     };
 
     try {
       const response = await API.post("/tasks", newTaskData);
-      // Digging into the standard response structure: { data: { task: {...} } }
-      const newTask = response.data.data.task;
+      const newTask = response.data.data?.task || response.data;
 
-      // Update the UI by 'spreading' the old tasks and adding the new one
       setTasks((prev) => [...prev, newTask]);
-
-      // Reset form fields
       setInputValue("");
       setDescValue("");
+      console.log("Adding Task:", newTaskData); // Debug log
     } catch (err) {
-      console.error("Error saving task:", err);
+      console.error("SQL Insert Error:", err);
     }
   };
-
   /**
    * 5. PERSISTENT TOGGLE (Update)
    * Flips the status between 'todo' and 'completed' on the server.
    */
   const toggleComplete = async (task) => {
-    const newStatus = task.status === "completed" ? "todo" : "completed";
+    // Use 'pending' instead of 'todo' to match your SQL DEFAULT
+    const newStatus = task.status === "completed" ? "pending" : "completed";
+
     try {
-      // We use PATCH to only update the 'status' field
       const response = await API.patch(`/tasks/${task.id}`, {
         status: newStatus,
       });
-      const updatedTask = response.data.data || response.data;
 
-      // Update the specific task in the list while keeping others the same
+      // SQL/Express usually returns the row directly
+      const updatedTask = response.data.data?.task || response.data;
+
       setTasks((prev) => prev.map((t) => (t.id === task.id ? updatedTask : t)));
 
-      // If the task we just completed was in the timer, stop the timer.
       if (newStatus === "completed" && activeTaskId === task.id) {
         setActiveTaskId(null);
       }
     } catch (err) {
-      console.error("Error updating task:", err);
+      console.error("SQL Update Error:", err);
     }
   };
-
   /**
    * 6. PERSISTENT DELETE (Destroy)
    * Removes the mission from the database and the UI.
@@ -166,7 +184,7 @@ const TaskList = ({
             </select>
             <button
               type="submit"
-              className="bg-slate-900 text-white p-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all"
+              className="bg-slate-900 text-white p-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add
             </button>
@@ -175,63 +193,145 @@ const TaskList = ({
       </form>
 
       {/* LIST */}
+      {/* LIST */}
       <div className="space-y-3">
         {tasks.length === 0 ? (
           <p className="text-center py-10 text-slate-300 font-medium text-sm italic">
             No active deployments.
           </p>
         ) : (
-          tasks.map((task) => (
-            <div
-              key={task.id}
-              className={`flex items-center justify-between p-5 bg-white border rounded-[1.5rem] transition-all ${activeTaskId === task.id ? "border-blue-500 ring-4 ring-blue-50 shadow-lg" : "border-slate-100 hover:border-slate-200"}`}
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className={`text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${task.status === "completed" ? "bg-emerald-100 text-emerald-600" : task.status === "in-progress" ? "bg-amber-100 text-amber-600 animate-pulse" : "bg-slate-100 text-slate-400"}`}
-                  >
-                    {task.status}
-                  </span>
-                  <h4
-                    className={`font-bold ${task.status === "completed" ? "line-through text-slate-300" : "text-slate-800"}`}
-                  >
-                    {task.text}
-                  </h4>
-                </div>
-                <p className="text-[11px] text-slate-400 font-medium">
-                  {task.description}
-                </p>
-              </div>
+          tasks.map((task) => {
+            const isEditing = editingId === task.id;
 
-              <div className="flex items-center gap-2 ml-4">
-                {task.status !== "completed" && (
-                  <button
-                    onClick={() => toggleComplete(task)}
-                    className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-all text-sm"
-                  >
-                    ✓
-                  </button>
-                )}
-                {task.status !== "completed" && (
-                  <button
-                    onClick={() =>
-                      setActiveTaskId(activeTaskId === task.id ? null : task.id)
-                    }
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${activeTaskId === task.id ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100"}`}
-                  >
-                    {activeTaskId === task.id ? "Active" : "Focus"}
-                  </button>
-                )}
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  className="text-slate-200 hover:text-rose-500 text-xl font-light p-2"
-                >
-                  ×
-                </button>
+            return (
+              <div
+                key={task.id}
+                className={`flex items-center justify-between p-5 bg-white border rounded-[1.5rem] transition-all 
+                ${activeTaskId === task.id ? "border-blue-500 ring-4 ring-blue-50 shadow-lg" : "border-slate-100"}`}
+              >
+                {/* LEFT SIDE: CONTENT */}
+                <div className="flex-1">
+                  {isEditing ? (
+                    // --- EDIT MODE INPUTS ---
+                    <div className="space-y-2 pr-4">
+                      <input
+                        className="w-full font-bold text-slate-800 border-b border-blue-400 outline-none"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        autoFocus
+                      />
+                      <textarea
+                        className="w-full text-[11px] text-slate-400 outline-none resize-none"
+                        value={editDesc}
+                        onChange={(e) => setEditDesc(e.target.value)}
+                      />
+                    </div>
+                  ) : (
+                    // --- VIEW MODE TEXT ---
+                    <>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`text-[8px] font-black px-2 py-0.5 rounded uppercase ${
+                            task.status === "completed"
+                              ? "bg-emerald-100 text-emerald-600"
+                              : task.status === "in-progress"
+                                ? "bg-amber-100 text-amber-600 animate-pulse"
+                                : "bg-slate-100 text-slate-400"
+                          }`}
+                        >
+                          {task.status}
+                        </span>
+                        <h4
+                          className={`font-bold ${task.status === "completed" ? "line-through text-slate-300" : "text-slate-800"}`}
+                        >
+                          {task.title}
+                        </h4>
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-medium">
+                        {task.description}
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {/* RIGHT SIDE: ACTIONS */}
+                <div className="flex items-center gap-2 ml-4">
+                  {isEditing ? (
+                    // --- EDIT MODE BUTTONS ---
+                    <>
+                      <button
+                        onClick={() => saveEdit(task.id)}
+                        className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-700"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="text-[10px] text-slate-400 font-bold uppercase"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    // --- VIEW MODE BUTTONS ---
+                    <>
+                      {task.status !== "completed" && (
+                        <>
+                          {/* TOGGLE COMPLETE */}
+                          <button
+                            onClick={() => toggleComplete(task)}
+                            className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-all text-sm"
+                            title="Complete Mission"
+                          >
+                            ✓
+                          </button>
+
+                          {/* FOCUS BUTTON (RESTORED) */}
+                          <button
+                            onClick={() =>
+                              setActiveTaskId(
+                                activeTaskId === task.id ? null : task.id,
+                              )
+                            }
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all 
+                              ${
+                                activeTaskId === task.id
+                                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                                  : "bg-slate-50 text-slate-400 hover:bg-slate-100"
+                              }`}
+                          >
+                            {activeTaskId === task.id ? "Active" : "Focus"}
+                          </button>
+                        </>
+                      )}
+
+                      {/* EDIT BUTTON */}
+                      <button
+                        onClick={() => {
+                          setEditingId(task.id);
+                          setEditTitle(task.title);
+                          setEditDesc(task.description);
+                        }}
+                        className="p-2 text-slate-300 hover:text-blue-500 transition-colors"
+                        title="Edit Task"
+                      >
+                        ✎
+                      </button>
+
+                      {/* DELETE BUTTON */}
+                      <button
+                        onClick={() => deleteTask(task.id)}
+                        className="text-slate-200 hover:text-rose-500 text-xl font-light p-2"
+                        title="Delete Task"
+                      >
+                        ×
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
