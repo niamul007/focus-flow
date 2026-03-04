@@ -36,13 +36,14 @@ export const getTasks = async (req, res) => {
  */
 // src/controllers/taskController.mjs
 export const createTask = async (req, res) => {
-  const { title, description } = req.body;
+  // 1. Destructure 'status' from the request body
+  const { title, description, status } = req.body; 
   const userId = req.user.id; 
 
   try {
-    // PASS ALL THREE: userId, title, description
-    const newTask = await taskService.createNewTask(userId, title, description);
-
+    // 2. Pass 'status' as the 4th argument
+    const newTask = await taskService.createNewTask(userId, title, description, status);
+    
     res.status(201).json({
       status: "success",
       data: { task: newTask }
@@ -59,14 +60,16 @@ export const createTask = async (req, res) => {
  */
 export const updateTask = async (req, res) => {
   try {
-    const { id } = req.params; // The Task ID from URL
-    const userId = req.user.id; // The Owner's ID from JWT
-    const { completed } = req.body;
+    const { id } = req.params;
+    const userId = req.user.id;
+    
+    // ❌ OLD: const { completed } = req.body;
+    // ✅ NEW: Look for 'status'
+    const { status } = req.body; 
 
-    // We pass both IDs to the service to ensure ownership
-    const task = await taskService.updateTaskStatus(id, userId, completed);
+    // Pass 'status' to the service
+    const task = await taskService.updateTaskStatus(id, userId, status);
 
-    // If no task returned, it means it didn't exist OR user doesn't own it
     if (!task) {
       return res.status(404).json({ message: "Task not found or access denied" });
     }
@@ -76,6 +79,7 @@ export const updateTask = async (req, res) => {
       data: { task },
     });
   } catch (err) {
+    // This is where that 500 error was coming from!
     res.status(500).json({ status: "error", message: err.message });
   }
 };
@@ -106,26 +110,21 @@ export const removeTask = async (req, res) => {
   }
 };
 
-export const updateTaskTitle = async (req, res) => {
+export const updateTaskContent = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const { title } = req.body;
+    // Get everything that COULD be in the body
+    const { title, description, status } = req.body;
 
-    if (!title) {
-      return res.status(400).json({ message: "New title is required" });
-    }
-
-    const task = await taskService.editTaskTitle(id, userId, title);
+    // Use a service function that handles partial updates
+    const task = await taskService.editTaskGeneral(id, userId, { title, description, status });
 
     if (!task) {
-      return res.status(404).json({ message: "Task not found or unauthorized" });
+      return res.status(404).json({ message: "Task not found" });
     }
 
-    res.status(200).json({
-      status: "success",
-      data: { task },
-    });
+    res.status(200).json({ status: "success", data: { task } });
   } catch (err) {
     res.status(500).json({ status: "error", message: err.message });
   }
