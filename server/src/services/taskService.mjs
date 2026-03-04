@@ -1,13 +1,15 @@
 import pool from "../db/index.mjs";
 
 // 1. Add 'description' to the parameters
-export const createNewTask = async (userId, title, description) => {
-  
-  // 2. Add 'description' to the SQL columns and add $3
-  const sql = `INSERT INTO tasks (user_id, title, description) VALUES($1, $2, $3) RETURNING *`;
+export const createNewTask = async (userId, title, description, status) => {
+  // 1. Add 'status' to the column list and '$4' to the VALUES
+  const sql = `
+    INSERT INTO tasks (user_id, title, description, status) 
+    VALUES ($1, $2, $3, $4) 
+    RETURNING *`;
 
-  // 3. Add 'description' to the array
-  const result = await pool.query(sql, [userId, title, description]);
+  // 2. Add 'status' to the parameters array
+  const result = await pool.query(sql, [userId, title, description, status || 'pending']);
 
   return result.rows[0];
 };
@@ -29,30 +31,35 @@ export const deleteTask = async (taskId, userId) => {
 
 
 
-export const updateTaskStatus = async (taskId, userId, completed) => {
+export const updateTaskStatus = async (taskId, userId, status) => {
+  // We use user_id=$2 to make sure a user can only edit their OWN tasks
   const sql = `
     UPDATE tasks 
-    SET completed = $3 
+    SET status = $3 
     WHERE id = $1 AND user_id = $2 
     RETURNING *`;
-  
-  const result = await pool.query(sql, [taskId, userId, completed]);
+
+  const result = await pool.query(sql, [taskId, userId, status]);
   return result.rows[0];
 };
-
 
 
 /**
  * Edits the title of an existing task
  */
-export const editTaskTitle = async (taskId, userId, newTitle) => {
+
+export const editTaskGeneral = async (taskId, userId, updates) => {
+  const { title, description, status } = updates;
+
   const sql = `
     UPDATE tasks 
-    SET title = $1 
-    WHERE id = $2 AND user_id = $3 
+    SET 
+      title = COALESCE($1, title), 
+      description = COALESCE($2, description), 
+      status = COALESCE($3, status)
+    WHERE id = $4 AND user_id = $5 
     RETURNING *`;
   
-  const result = await pool.query(sql, [newTitle, taskId, userId]);
+  const result = await pool.query(sql, [title, description, status, taskId, userId]);
   return result.rows[0];
 };
-
