@@ -75,6 +75,13 @@ const Dashboard = () => {
           t.id === activeTaskId ? { ...t, status: "completed" } : t,
         ),
       );
+      toast.success("Mission Accomplished! 🎉", {
+        duration: 4000,
+        style: {
+          background: "#1e293b", // Slate-800 to match dark mode
+          color: "#fff",
+        },
+      });
 
       setShowModal(false); // Close the pop-up
       setActiveTaskId(null); // Clear the focus
@@ -156,7 +163,7 @@ const Dashboard = () => {
           />
         </section>
       </main>
-      
+
       {/* MISSION DEBRIEF MODAL */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
