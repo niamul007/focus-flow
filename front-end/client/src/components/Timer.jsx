@@ -9,29 +9,38 @@ import { useState, useEffect } from "react";
  */
 const Timer = ({ onComplete, isActiveTask }) => {
   // 1. STATE: We track time in TOTAL SECONDS (easier for math than tracking mins/secs separately).
-  const [seconds, setSeconds] = useState(.20 * 60);
+  const [seconds, setSeconds] = useState(0.2 * 60);
   const [isActive, setIsActive] = useState(false);
+
+  // Inside your Timer component
+  const playSuccessSound = () => {
+    const audio = new Audio("/success.mp3");
+    audio.volume = 0.5; // 50% volume so we don't scare the user!
+    audio.play().catch((error) => console.log("Audio playback failed:", error));
+  };
 
   /**
    * 2. THE ENGINE (useEffect)
    * This is the "Gravity" of the app. It pulls the time down every 1000ms.
    */
-useEffect(() => {
-  let interval = null;
+  useEffect(() => {
+    let interval = null;
 
-  if (isActive && seconds > 0) {
-    interval = setInterval(() => {
-      setSeconds((prev) => prev - 1);
-    }, 1000);
-  } else if (seconds === 0 && isActive) { // 👈 ADD 'isActive' HERE
-    clearInterval(interval);
-    setIsActive(false); // Stop the timer
-    onComplete();       // Trigger the modal
-    setSeconds(.20 * 60); // 👈 RESET seconds to 25 mins immediately
-  }
+    if (isActive && seconds > 0) {
+      interval = setInterval(() => {
+        setSeconds((prev) => prev - 1);
+      }, 1000);
+    } else if (seconds === 0 && isActive) {
+      playSuccessSound(); // Play sound when timer hits 0
+      // 👈 ADD 'isActive' HERE
+      clearInterval(interval);
+      setIsActive(false); // Stop the timer
+      onComplete(); // Trigger the modal
+      setSeconds(0.2 * 60); // 👈 RESET seconds to 25 mins immediately
+    }
 
-  return () => clearInterval(interval);
-}, [isActive, seconds, onComplete]);
+    return () => clearInterval(interval);
+  }, [isActive, seconds, onComplete]);
 
   /**
    * 3. THE "PILOT MATH" (Formatting)
