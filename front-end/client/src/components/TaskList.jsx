@@ -196,9 +196,18 @@ const TaskList = ({
       {/* LIST */}
       <div className="space-y-3">
         {tasks.length === 0 ? (
-          <p className="text-center py-10 text-slate-300 font-medium text-sm italic">
-            No active deployments.
-          </p>
+          <div className="flex flex-col items-center justify-center py-16 px-4 border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/30">
+            <div className="p-4 bg-slate-800/50 rounded-full mb-4">
+              <span className="text-3xl">📡</span>
+            </div>
+            <h3 className="text-slate-200 font-bold text-lg tracking-tight">
+              System Clear
+            </h3>
+            <p className="text-slate-500 text-sm text-center mt-2 max-w-[250px]">
+              No active missions in your sector. Initialize a new task to begin
+              tracking.
+            </p>
+          </div>
         ) : (
           tasks.map((task) => {
             const isEditing = editingId === task.id;
