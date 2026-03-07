@@ -1,39 +1,18 @@
 import { useState } from "react";
 import API from "../api/axios";
 
-/**
- * TASKLIST COMPONENT
- * -------------------
- * This component handles the 'CRUD' (Create, Read, Update, Delete) operations
- * for the user's missions. It communicates directly with the Backend via the API tool.
- */
-const TaskList = ({
-  tasks = [], // Default to empty array to prevent .map() crashes
-  setTasks, // Function to update the global task state
-  activeTaskId, // The ID of the task currently in the Pomodoro timer
-  setActiveTaskId, // Function to change the active timer task
-  user, // Current logged-in pilot info
-}) => {
-  // 1. LOCAL FORM STATE: Temporary storage for what the user is typing
+const TaskList = ({ tasks = [], setTasks, activeTaskId, setActiveTaskId, user }) => {
   const [inputValue, setInputValue] = useState("");
   const [descValue, setDescValue] = useState("");
   const [status, setStatus] = useState("todo");
-  // 1. In your State definition (Top of Component)
   const [editingId, setEditingId] = useState(null);
-  const [editTitle, setEditTitle] = useState(""); // We will use 'editTitle'
+  const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
 
-  // 2. In your saveEdit function
   const saveEdit = async (id) => {
     try {
-      const response = await API.patch(`/tasks/${id}`, {
-        title: editTitle,
-        description: editDesc,
-      });
-
-      // Extract the updated task from the nested data structure
+      const response = await API.put(`/tasks/${id}`, { title: editTitle, description: editDesc });
       const updatedTask = response.data.data?.task || response.data;
-
       setTasks((prev) => prev.map((t) => (t.id === id ? updatedTask : t)));
       setEditingId(null);
     } catch (err) {
@@ -41,142 +20,78 @@ const TaskList = ({
     }
   };
 
-  /**
-   * 2. THE SAFETY GUARD (The Bouncer)
-   * If 'tasks' isn't an array yet (loading or error), we show a
-   * 'Synchronizing' spinner instead of crashing the app.
-   */
   if (!Array.isArray(tasks)) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[3rem] border border-dashed border-slate-200">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">
-          Synchronizing Missions...
+      <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
+        <div className="w-7 h-7 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-slate-400 dark:text-slate-500 font-display font-black uppercase text-[10px] tracking-widest">
+          Syncing...
         </p>
       </div>
     );
   }
 
-  // 3. COMPUTED STATS: Derived data calculated on every render
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.status === "completed").length;
-  const completionRate =
-    totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
-
-  /**
-   * 4. PERSISTENT ADD (Create)
-   * Sends the new mission to the database.
-   */
   const addTask = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
-
-    const newTaskData = {
-      title: inputValue,
-      description: descValue,
-      status: status, // This will now send 'pending', 'in-progress', or 'completed'
-    };
-
     try {
-      const response = await API.post("/tasks", newTaskData);
+      const response = await API.post("/tasks", { title: inputValue, description: descValue, status });
       const newTask = response.data.data?.task || response.data;
-
       setTasks((prev) => [...prev, newTask]);
       setInputValue("");
       setDescValue("");
-      console.log("Adding Task:", newTaskData); // Debug log
     } catch (err) {
       console.error("SQL Insert Error:", err);
     }
   };
-  /**
-   * 5. PERSISTENT TOGGLE (Update)
-   * Flips the status between 'todo' and 'completed' on the server.
-   */
+
   const toggleComplete = async (task) => {
-    // Use 'pending' instead of 'todo' to match your SQL DEFAULT
     const newStatus = task.status === "completed" ? "pending" : "completed";
-
     try {
-      const response = await API.patch(`/tasks/${task.id}`, {
-        status: newStatus,
-      });
-
-      // SQL/Express usually returns the row directly
+      const response = await API.put(`/tasks/${task.id}`, { status: newStatus });
       const updatedTask = response.data.data?.task || response.data;
-
       setTasks((prev) => prev.map((t) => (t.id === task.id ? updatedTask : t)));
-
-      if (newStatus === "completed" && activeTaskId === task.id) {
-        setActiveTaskId(null);
-      }
+      if (newStatus === "completed" && activeTaskId === task.id) setActiveTaskId(null);
     } catch (err) {
       console.error("SQL Update Error:", err);
     }
   };
-  /**
-   * 6. PERSISTENT DELETE (Destroy)
-   * Removes the mission from the database and the UI.
-   */
+
   const deleteTask = async (taskId) => {
     try {
       await API.delete(`/tasks/${taskId}`);
-      // Filter out the deleted task from the local state
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
-
-      // Clear the timer if we just deleted the active task
       if (activeTaskId === taskId) setActiveTaskId(null);
     } catch (err) {
       console.error("Error deleting task:", err);
     }
   };
-  return (
-    <div className="w-full space-y-8">
-      {/* STATS BAR */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col items-center">
-          <span className="text-3xl font-black text-slate-800">
-            {totalTasks}
-          </span>
-          <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400">
-            Missions
-          </span>
-        </div>
-        <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col items-center">
-          <span className="text-3xl font-black text-blue-600">
-            {completionRate}%
-          </span>
-          <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400">
-            Success
-          </span>
-        </div>
-      </div>
 
-      {/* FORM */}
-      <form
-        onSubmit={addTask}
-        className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl"
-      >
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 space-y-3">
-            <input
-              className="w-full text-lg font-bold outline-none border-b border-transparent focus:border-blue-500 pb-1"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="New Mission..."
-            />
-            <textarea
-              className="w-full text-sm text-slate-400 outline-none h-10 resize-none"
-              value={descValue}
-              onChange={(e) => setDescValue(e.target.value)}
-              placeholder="Details..."
-            />
-          </div>
-          <div className="flex flex-col gap-2 md:w-44">
+  const inputClass = "w-full bg-transparent outline-none text-slate-800 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 transition-colors";
+
+  return (
+    <div className="w-full space-y-4">
+
+      {/* ADD TASK FORM */}
+      <form onSubmit={addTask} className="border border-slate-100 dark:border-slate-700 rounded-2xl p-5 bg-slate-50/50 dark:bg-slate-800/30 hover:border-violet-200 dark:hover:border-violet-800/50 transition-colors">
+        <div className="flex flex-col gap-3">
+          <input
+            className={`${inputClass} text-base font-bold border-b border-transparent focus:border-violet-400 dark:focus:border-violet-600 pb-1`}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Add a new task..."
+          />
+          <textarea
+            className={`${inputClass} text-sm text-slate-400 dark:text-slate-500 h-8 resize-none`}
+            value={descValue}
+            onChange={(e) => setDescValue(e.target.value)}
+            placeholder="Description (optional)"
+          />
+          <div className="flex items-center gap-2 pt-1">
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="bg-slate-50 p-3 rounded-xl text-[10px] font-black uppercase outline-none border border-slate-100"
+              className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 px-3 py-2 rounded-xl text-[10px] font-display font-black uppercase outline-none cursor-pointer"
             >
               <option value="todo">📋 Todo</option>
               <option value="in-progress">⚡ In Progress</option>
@@ -184,157 +99,131 @@ const TaskList = ({
             </select>
             <button
               type="submit"
-              className="bg-slate-900 text-white p-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-display font-black text-[10px] uppercase tracking-widest hover:from-violet-500 hover:to-indigo-500 transition-all shadow-sm shadow-violet-200 dark:shadow-violet-950/40"
             >
-              Add
+              + Add
             </button>
           </div>
         </div>
       </form>
 
-      {/* LIST */}
-      {/* LIST */}
-      <div className="space-y-3">
+      {/* TASK LIST */}
+      <div className="space-y-2.5">
         {tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/30">
-            <div className="p-4 bg-slate-800/50 rounded-full mb-4">
-              <span className="text-3xl">📡</span>
-            </div>
-            <h3 className="text-slate-200 font-bold text-lg tracking-tight">
-              System Clear
-            </h3>
-            <p className="text-slate-500 text-sm text-center mt-2 max-w-[250px]">
-              No active missions in your sector. Initialize a new task to begin
-              tracking.
+          <div className="flex flex-col items-center justify-center py-14 px-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+            <div className="w-12 h-12 bg-violet-50 dark:bg-violet-950/40 rounded-2xl flex items-center justify-center mb-3 text-xl">📋</div>
+            <h3 className="font-display font-black text-slate-600 dark:text-slate-400 text-base tracking-tight">No tasks yet</h3>
+            <p className="text-slate-400 dark:text-slate-600 text-sm text-center mt-1 max-w-[220px]">
+              Add your first task above to get started.
             </p>
           </div>
         ) : (
           tasks.map((task) => {
             const isEditing = editingId === task.id;
+            const isActiveFocus = activeTaskId === task.id;
 
             return (
               <div
                 key={task.id}
-                className={`flex items-center justify-between p-5 bg-white border rounded-[1.5rem] transition-all 
-                ${activeTaskId === task.id ? "border-blue-500 ring-4 ring-blue-50 shadow-lg" : "border-slate-100"}`}
+                className={`flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200
+                  ${isActiveFocus
+                    ? "bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800/50 shadow-sm"
+                    : "bg-white dark:bg-slate-900/50 border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700"
+                  }`}
               >
-                {/* LEFT SIDE: CONTENT */}
-                <div className="flex-1">
+                {/* Status dot */}
+                {!isEditing && (
+                  <button
+                    onClick={() => toggleComplete(task)}
+                    className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
+                      ${task.status === "completed"
+                        ? "bg-emerald-500 border-emerald-500 text-white"
+                        : "border-slate-300 dark:border-slate-600 hover:border-violet-400 dark:hover:border-violet-600"
+                      }`}
+                    title="Toggle complete"
+                  >
+                    {task.status === "completed" && (
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
                   {isEditing ? (
-                    // --- EDIT MODE INPUTS ---
-                    <div className="space-y-2 pr-4">
+                    <div className="space-y-1.5">
                       <input
-                        className="w-full font-bold text-slate-800 border-b border-blue-400 outline-none"
+                        className="w-full font-bold text-slate-800 dark:text-white border-b-2 border-violet-400 outline-none bg-transparent pb-0.5 text-sm"
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
                         autoFocus
                       />
                       <textarea
-                        className="w-full text-[11px] text-slate-400 outline-none resize-none"
+                        className="w-full text-xs text-slate-400 dark:text-slate-500 outline-none resize-none bg-transparent"
                         value={editDesc}
                         onChange={(e) => setEditDesc(e.target.value)}
+                        rows={2}
                       />
                     </div>
                   ) : (
-                    // --- VIEW MODE TEXT ---
-                    <>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className={`text-[8px] font-black px-2 py-0.5 rounded uppercase ${
-                            task.status === "completed"
-                              ? "bg-emerald-100 text-emerald-600"
-                              : task.status === "in-progress"
-                                ? "bg-amber-100 text-amber-600 animate-pulse"
-                                : "bg-slate-100 text-slate-400"
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[8px] font-display font-black px-2 py-0.5 rounded-full uppercase tracking-wide
+                          ${task.status === "completed"
+                            ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                            : task.status === "in-progress"
+                            ? "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500"
                           }`}
                         >
                           {task.status}
                         </span>
-                        <h4
-                          className={`font-bold ${task.status === "completed" ? "line-through text-slate-300" : "text-slate-800"}`}
+                        <span className={`font-bold text-sm truncate
+                          ${task.status === "completed" ? "line-through text-slate-300 dark:text-slate-600" : "text-slate-800 dark:text-slate-100"}`}
                         >
                           {task.title}
-                        </h4>
+                        </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 font-medium">
-                        {task.description}
-                      </p>
-                    </>
+                      {task.description && (
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate">{task.description}</p>
+                      )}
+                    </div>
                   )}
                 </div>
 
-                {/* RIGHT SIDE: ACTIONS */}
-                <div className="flex items-center gap-2 ml-4">
+                {/* Actions */}
+                <div className="flex items-center gap-1 shrink-0">
                   {isEditing ? (
-                    // --- EDIT MODE BUTTONS ---
                     <>
-                      <button
-                        onClick={() => saveEdit(task.id)}
-                        className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-700"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="text-[10px] text-slate-400 font-bold uppercase"
-                      >
-                        Cancel
-                      </button>
+                      <button onClick={() => saveEdit(task.id)} className="px-3 py-1.5 bg-violet-600 text-white text-[10px] font-display font-black uppercase rounded-lg hover:bg-violet-500 transition-colors">Save</button>
+                      <button onClick={() => setEditingId(null)} className="px-2 py-1.5 text-[10px] text-slate-400 font-display font-black uppercase hover:text-slate-600 dark:hover:text-slate-300 transition-colors">✕</button>
                     </>
                   ) : (
-                    // --- VIEW MODE BUTTONS ---
                     <>
                       {task.status !== "completed" && (
-                        <>
-                          {/* TOGGLE COMPLETE */}
-                          <button
-                            onClick={() => toggleComplete(task)}
-                            className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-all text-sm"
-                            title="Complete Mission"
-                          >
-                            ✓
-                          </button>
-
-                          {/* FOCUS BUTTON (RESTORED) */}
-                          <button
-                            onClick={() =>
-                              setActiveTaskId(
-                                activeTaskId === task.id ? null : task.id,
-                              )
-                            }
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all 
-                              ${
-                                activeTaskId === task.id
-                                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                                  : "bg-slate-50 text-slate-400 hover:bg-slate-100"
-                              }`}
-                          >
-                            {activeTaskId === task.id ? "Active" : "Focus"}
-                          </button>
-                        </>
+                        <button
+                          onClick={() => setActiveTaskId(activeTaskId === task.id ? null : task.id)}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-display font-black uppercase tracking-wide transition-all
+                            ${isActiveFocus
+                              ? "bg-violet-600 text-white shadow-sm shadow-violet-200 dark:shadow-violet-950/40"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+                            }`}
+                        >
+                          {isActiveFocus ? "● Focus" : "Focus"}
+                        </button>
                       )}
-
-                      {/* EDIT BUTTON */}
                       <button
-                        onClick={() => {
-                          setEditingId(task.id);
-                          setEditTitle(task.title);
-                          setEditDesc(task.description);
-                        }}
-                        className="p-2 text-slate-300 hover:text-blue-500 transition-colors"
-                        title="Edit Task"
-                      >
-                        ✎
-                      </button>
-
-                      {/* DELETE BUTTON */}
+                        onClick={() => { setEditingId(task.id); setEditTitle(task.title); setEditDesc(task.description || ""); }}
+                        className="w-7 h-7 text-slate-300 dark:text-slate-600 hover:text-violet-500 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-all flex items-center justify-center rounded-lg text-sm"
+                        title="Edit"
+                      >✎</button>
                       <button
                         onClick={() => deleteTask(task.id)}
-                        className="text-slate-200 hover:text-rose-500 text-xl font-light p-2"
-                        title="Delete Task"
-                      >
-                        ×
-                      </button>
+                        className="w-7 h-7 text-slate-200 dark:text-slate-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all flex items-center justify-center rounded-lg text-lg leading-none"
+                        title="Delete"
+                      >×</button>
                     </>
                   )}
                 </div>
