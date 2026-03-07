@@ -5,6 +5,42 @@ import TaskList from "../components/TaskList";
 import API from "../api/axios";
 import { toast } from "react-hot-toast";
 
+const getGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Good Morning";
+  if (h < 17) return "Good Afternoon";
+  return "Good Evening";
+};
+
+const ClockWidget = () => {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+  const date = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  return (
+    <div className="bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg shadow-violet-200 dark:shadow-violet-950/40 flex flex-col justify-between min-h-[110px]">
+      <p className="text-violet-200 text-[10px] font-display font-black uppercase tracking-widest">Local Time</p>
+      <div>
+        <p className="font-display text-3xl font-black tracking-tight leading-none">{time}</p>
+        <p className="text-violet-200 text-xs font-medium mt-1">{date}</p>
+      </div>
+    </div>
+  );
+};
+
+const StatWidget = ({ label, value, accent, bg, icon }) => (
+  <div className={`${bg} rounded-2xl p-5 border shadow-sm flex flex-col justify-between min-h-[110px]`}>
+    <div className="flex justify-between items-start">
+      <p className="text-[10px] font-display font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">{label}</p>
+      <span className="text-lg">{icon}</span>
+    </div>
+    <p className={`font-display text-3xl font-black tracking-tight ${accent}`}>{value}</p>
+  </div>
+);
+
 const Dashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const [tasks, setTasks] = useState([]);
@@ -14,36 +50,25 @@ const Dashboard = () => {
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [networkError, setNetworkError] = useState(false);
 
-  // --- 1. LOGIC & HOOKS (Must be at the top) ---
-
   useEffect(() => {
-    const fetchMissions = async () => {
-      if (!user?.id) {
-        setIsLoadingTasks(false); 
-        return;
-      }
-      
+    const fetchTasks = async () => {
+      if (!user?.id) { setIsLoadingTasks(false); return; }
       setIsLoadingTasks(true);
       try {
         const response = await API.get("/tasks");
-        const actualTasks = response.data?.data?.tasks || [];
-        setTasks(actualTasks);
+        setTasks(response.data?.data?.tasks || []);
         setNetworkError(false);
       } catch (err) {
-        console.error("Failed to fetch missions:", err);
+        console.error("Failed to fetch tasks:", err);
         setNetworkError(true);
       } finally {
         setIsLoadingTasks(false);
       }
     };
-    fetchMissions();
+    fetchTasks();
   }, [user?.id]);
 
-  const handleTimerComplete = () => {
-    if (activeTaskId) {
-      setShowModal(true);
-    }
-  };
+  const handleTimerComplete = () => { if (activeTaskId) setShowModal(true); };
 
   const completeActiveTask = async () => {
     if (!activeTaskId) return;
@@ -52,33 +77,31 @@ const Dashboard = () => {
       await API.put(`/tasks/${activeTaskId}`, { status: "completed" });
       setTasks((prev) =>
         prev.map((t) =>
-          t._id === activeTaskId || t.id === activeTaskId
-            ? { ...t, status: "completed" }
-            : t
+          t._id === activeTaskId || t.id === activeTaskId ? { ...t, status: "completed" } : t
         )
       );
-      toast.success("Mission Accomplished! 🎉", {
-        style: { background: "#1e293b", color: "#fff" },
-      });
+      toast.success("Task completed! 🎉");
       setShowModal(false);
       setActiveTaskId(null);
     } catch (err) {
-      console.error("Failed to complete task:", err);
-      toast.error("Telemetry error: Could not sync status.");
+      toast.error("Could not update task status.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // --- 2. EARLY RETURNS (The Gatekeepers) ---
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((t) => t.status === "completed").length;
+  const inProgressTasks = tasks.filter((t) => t.status === "in-progress").length;
+  const completionRate = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
   if (networkError) {
     return (
-      <div className="h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
-        <span className="text-4xl mb-4">📡</span>
-        <h1 className="font-black uppercase tracking-widest text-rose-500">Link Severed</h1>
-        <p className="text-slate-500 text-sm mt-2">Cannot reach Command Center.</p>
-        <button onClick={() => window.location.reload()} className="mt-6 text-xs border border-slate-700 px-4 py-2 rounded-xl">
+      <div className="h-screen bg-slate-50 dark:bg-[#0f1117] flex flex-col items-center justify-center text-center px-4">
+        <div className="w-16 h-16 bg-rose-100 dark:bg-rose-950/50 rounded-2xl flex items-center justify-center mb-5 text-2xl">📡</div>
+        <h1 className="font-display font-black text-rose-500 text-xl uppercase tracking-widest">Connection Lost</h1>
+        <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Cannot reach the server.</p>
+        <button onClick={() => window.location.reload()} className="mt-6 text-xs font-display font-black uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-5 py-2.5 rounded-xl hover:border-slate-300 transition-colors">
           Retry
         </button>
       </div>
@@ -87,139 +110,148 @@ const Dashboard = () => {
 
   if (isLoadingTasks) {
     return (
-      <div className="h-screen bg-slate-950 flex flex-col items-center justify-center">
-        <div className="w-10 h-10 border-4 border-slate-800 border-t-blue-500 rounded-full animate-spin"></div>
-        <p className="mt-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-          Establishing Uplink...
-        </p>
+      <div className="h-screen bg-slate-50 dark:bg-[#0f1117] flex flex-col items-center justify-center gap-4">
+        <div className="w-10 h-10 border-4 border-slate-200 dark:border-slate-800 border-t-violet-500 rounded-full animate-spin" />
+        <p className="text-[10px] font-display font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">Loading...</p>
       </div>
     );
   }
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans">
-      {/* 1. TOP NAVIGATION */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2.5 rounded-2xl shadow-blue-200 shadow-2xl">
-            <span className="text-white text-xl">🚀</span>
-          </div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase">
-            FocusFlow
-          </h1>
-        </div>
 
-        <div className="flex items-center gap-6">
-          <div className="hidden md:block text-right">
-            <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">
-              Pilot Status
-            </p>
-            <p className="text-sm font-bold text-slate-800">
-              {user?.username || "Guest"}
-            </p>
-          </div>
-          <button
-            onClick={logout}
-            className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white bg-slate-900 hover:bg-rose-500 rounded-2xl transition-all duration-300 shadow-lg shadow-slate-200"
-          >
-            End Mission
-          </button>
-        </div>
-      </nav>
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f1117] font-body">
 
-      {/* 2. MAIN CONTENT GRID */}
-      <main className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
-        {/* LEFT COLUMN: THE ENGINE */}
-        <aside className="lg:col-span-4">
-          <div className="bg-white p-10 rounded-[3rem] border border-slate-50 shadow-2xl shadow-slate-200/40 sticky top-32 text-center">
-            <div className="flex justify-between items-center mb-8 text-left">
-              <span className="px-4 py-1.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest rounded-full border border-blue-100">
-                Engines Hot
-              </span>
-              <div className="flex gap-1">
-                <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce"></div>
-                <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-bounce delay-100"></div>
-                <div className="h-1.5 w-1.5 rounded-full bg-blue-300 animate-bounce delay-200"></div>
-              </div>
-            </div>
+      {/* NAVBAR */}
+      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-[#0f1117]/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800/60 px-6 md:px-10 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-violet-200 dark:shadow-violet-950/50 text-base select-none">🚀</div>
+          <span className="font-display text-lg font-black text-slate-900 dark:text-white tracking-tight">FocusFlow</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white text-xs font-black select-none shadow-sm">
+              {user?.username?.[0]?.toUpperCase() || "U"}
+            </div>
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{user?.username || "Guest"}</span>
+          </div>
+          <button
+            onClick={logout}
+            className="px-4 py-2 text-[10px] font-display font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-rose-200 dark:hover:border-rose-800 transition-all duration-200"
+          >
+            Sign Out
+          </button>
+        </div>
+      </nav>
 
-            <Timer
-              onComplete={handleTimerComplete}
-              isActiveTask={!!activeTaskId}
-            />
-          </div>
-        </aside>
+      <main className="max-w-7xl mx-auto px-5 md:px-8 py-8 space-y-6">
 
-        {/* RIGHT COLUMN: THE MISSIONS */}
-        <section className="lg:col-span-8">
-          <div className="mb-10">
-            <h2 className="text-4xl font-black text-slate-900 tracking-tighter">
-              Command Center
-            </h2>
-            <p className="text-slate-400 text-sm font-medium mt-2">
-              Current Active Deployments and Objectives.
-            </p>
-          </div>
+        {/* GREETING HERO */}
+        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-7 md:p-8 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <p className="text-slate-400 dark:text-slate-500 text-sm font-medium mb-1">{getGreeting()},</p>
+              <h1 className="font-display text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-none">
+                {user?.username || "there"} 👋
+              </h1>
+              <p className="text-slate-400 dark:text-slate-500 text-sm mt-3 max-w-md">
+                {completedTasks === 0 && totalTasks === 0
+                  ? "No tasks yet — add one below to get started."
+                  : completedTasks === totalTasks && totalTasks > 0
+                  ? "All tasks done! Great work today. 🎉"
+                  : `You have ${totalTasks - completedTasks} task${totalTasks - completedTasks !== 1 ? "s" : ""} remaining today.`}
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap md:flex-nowrap shrink-0">
+              {[
+                { val: totalTasks, label: "Total", bg: "bg-violet-50 dark:bg-violet-950/40 border-violet-100 dark:border-violet-900/50", text: "text-violet-600 dark:text-violet-400", sub: "text-violet-400 dark:text-violet-500" },
+                { val: completedTasks, label: "Done", bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50", text: "text-emerald-600 dark:text-emerald-400", sub: "text-emerald-400 dark:text-emerald-500" },
+                { val: inProgressTasks, label: "Active", bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/50", text: "text-amber-600 dark:text-amber-400", sub: "text-amber-400 dark:text-amber-500" },
+              ].map(({ val, label, bg, text, sub }) => (
+                <div key={label} className={`px-5 py-3 ${bg} border rounded-xl text-center min-w-[76px]`}>
+                  <p className={`font-display text-2xl font-black ${text}`}>{val}</p>
+                  <p className={`text-[9px] font-display font-black uppercase tracking-wider ${sub}`}>{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-          <TaskList
-            tasks={tasks}
-            setTasks={setTasks}
-            activeTaskId={activeTaskId}
-            setActiveTaskId={setActiveTaskId}
-            user={user} // Passed user so TaskList knows user.id for POST requests
-          />
-        </section>
-      </main>
+        {/* WIDGET ROW */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <ClockWidget />
+          <StatWidget label="Completion" value={`${completionRate}%`} accent="text-indigo-600 dark:text-indigo-400" bg="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800" icon="📊" />
+          <StatWidget label="Tasks Done" value={`${completedTasks}/${totalTasks}`} accent="text-emerald-600 dark:text-emerald-400" bg="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800" icon="✅" />
+          <StatWidget label="In Progress" value={inProgressTasks} accent="text-amber-500 dark:text-amber-400" bg="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800" icon="⚡" />
+        </div>
 
-      {/* MISSION DEBRIEF MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
-            onClick={() => setShowModal(false)}
-          />
+        {/* CONTENT GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-          {/* Modal Card */}
-          <div className="relative bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl border border-slate-100 text-center space-y-8 animate-in zoom-in-95 duration-300">
-            <div className="space-y-3">
-              <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">📡</span>
-              </div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-                Mission Time Up
-              </h2>
-              <p className="text-slate-500 text-sm font-medium leading-relaxed">
-                Focus session complete for:
-                <br />
-                <span className="text-blue-600 font-bold">
-                  "
-                  {tasks.find((t) => t.id === activeTaskId)?.title ||
-                    "Active Mission"}
-                  "
-                </span>
-              </p>
-            </div>
+          {/* Timer */}
+          <aside className="lg:col-span-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-7 sticky top-24">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="font-display font-black text-slate-900 dark:text-white text-sm uppercase tracking-wide">Focus Timer</h2>
+                  <p className="text-slate-400 dark:text-slate-500 text-xs mt-0.5">Pomodoro session</p>
+                </div>
+                <div className="flex gap-1">
+                  {[0, 100, 200].map((d) => (
+                    <div key={d} className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                  ))}
+                </div>
+              </div>
+              <Timer onComplete={handleTimerComplete} isActiveTask={!!activeTaskId} />
+            </div>
+          </aside>
 
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={completeActiveTask}
-                className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-slate-200 active:scale-95"
-              >
-                Mission Accomplished ✅
-              </button>
+          {/* Tasks */}
+          <section className="lg:col-span-8">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-7">
+              <div className="mb-6">
+                <h2 className="font-display font-black text-slate-900 dark:text-white text-sm uppercase tracking-wide">My Tasks</h2>
+                <p className="text-slate-400 dark:text-slate-500 text-xs mt-0.5">Manage your work for today</p>
+              </div>
+              <TaskList tasks={tasks} setTasks={setTasks} activeTaskId={activeTaskId} setActiveTaskId={setActiveTaskId} user={user} />
+            </div>
+          </section>
+        </div>
+      </main>
 
-              <button
-                onClick={() => setShowModal(false)}
-                className="w-full bg-slate-50 text-slate-400 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all active:scale-95"
-              >
-                Need More Time ⏳
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+      {/* MODAL */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-8 shadow-2xl border border-slate-100 dark:border-slate-800 text-center space-y-6 animate-slide-up">
+            <div>
+              <div className="w-14 h-14 bg-violet-50 dark:bg-violet-950/50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">⏱️</div>
+              <h2 className="font-display text-2xl font-black text-slate-800 dark:text-white tracking-tight">Time's Up!</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium leading-relaxed mt-2">
+                Focus session complete for{" "}
+                <span className="text-violet-600 dark:text-violet-400 font-bold">
+                  "{tasks.find((t) => t.id === activeTaskId)?.title || "your task"}"
+                </span>
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={completeActiveTask}
+                disabled={isSaving}
+                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white py-3.5 rounded-xl font-display font-black uppercase text-[10px] tracking-widest hover:from-violet-500 hover:to-indigo-500 transition-all shadow-lg shadow-violet-200 dark:shadow-violet-950/50 active:scale-[0.98] disabled:opacity-50"
+              >
+                {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" /> : "Mark as Complete ✅"}
+              </button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-full bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 py-3.5 rounded-xl font-display font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-slate-700 transition-all active:scale-[0.98]"
+              >
+                Keep Working ⏳
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default Dashboard;
