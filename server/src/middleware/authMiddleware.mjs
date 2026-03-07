@@ -1,32 +1,32 @@
 import jwt from "jsonwebtoken";
+import pool from "../db/index.mjs";
 
 export const protect = async (req, res, next) => {
-    console.log("Checking Secret:", process.env.JWT_SECRET);
+  console.log("Checking Secret:", process.env.JWT_SECRET);
   try {
     const authHeader = req.headers.authorization;
 
-    // 1. Check if header exists
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "No token, authorization denied" });
     }
 
-    // 2. The Split (Important!)
-    // If the header is "Bearer abc.123.xyz", 
-    // .split(" ") creates ["Bearer", "abc.123.xyz"]
-    // We want index [1]
     const token = authHeader.split(" ")[1];
-
-    // 3. The Verification
-    // Make sure process.env.JWT_SECRET is exactly the same as in your controller
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // 4. Attach and Move on
-    req.user = decoded;
+    const result = await pool.query(
+      "SELECT id, email, username FROM users WHERE id = $1",
+      [decoded.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    req.user = result.rows[0];
     next();
-    
+
   } catch (error) {
     console.error("JWT Verification Error:", error.message);
-    // This is the error you are seeing in Thunder Client
     res.status(401).json({ message: "Token not valid" });
   }
 };

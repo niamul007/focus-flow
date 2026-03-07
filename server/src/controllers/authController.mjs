@@ -11,9 +11,9 @@ export const register = async (req, res) => {
 
     // 2. CREATE THE TOKEN (The missing piece!)
     const token = jwt.sign(
-      { id: user.id }, 
-      process.env.JWT_SECRET || 'dev_secret_key', 
-      { expiresIn: '1d' }
+      { id: user.id },
+      process.env.JWT_SECRET || "dev_secret_key",
+      { expiresIn: "1d" },
     );
 
     // 3. SEND EVERYTHING BACK
@@ -21,12 +21,12 @@ export const register = async (req, res) => {
       status: "success",
       token: token, // <--- NOW YOU WILL SEE IT
       message: "Welcome to FocusFlow!",
-      data: { 
-        user: { 
-          id: user.id, 
+      data: {
+        user: {
+          id: user.id,
           email: user.email,
-          name: user.username || "New User" // <--- SHOWING THE NAME
-        } 
+          name: user.username || "New User", // <--- SHOWING THE NAME
+        },
       },
     });
   } catch (err) {
@@ -41,29 +41,33 @@ export const login = async (req, res) => {
     const user = await authService.findUserByEmail(email);
 
     if (!user) {
-      return res.status(401).json({ status: "fail", message: "Invalid Credentials" });
+      return res
+        .status(401)
+        .json({ status: "fail", message: "Invalid Credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      return res.status(401).json({ status: "fail", message: "Invalid Credentials" });
+      return res
+        .status(401)
+        .json({ status: "fail", message: "Invalid Credentials" });
     }
 
     // 1. Generate the token
     const token = jwt.sign(
-      { id: user.id }, 
-      process.env.JWT_SECRET || 'dev_secret_key', 
-      { expiresIn: '1d' }
+      { id: user.id },
+      process.env.JWT_SECRET || "dev_secret_key",
+      { expiresIn: "1d" },
     );
 
     // 2. SEND IT (Notice the token is right here at the top)
     return res.status(200).json({
       status: "success",
-      token: token, 
+      token: token,
       message: "NIAMUL_VERIFIED_LOGIN",
       data: {
-        user: { id: user.id, email: user.email }
-      }
+        user: { id: user.id, email: user.email, username: user.username },
+      },
     });
   } catch (err) {
     console.error("LOGIN ERROR:", err);

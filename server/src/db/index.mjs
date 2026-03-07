@@ -7,6 +7,9 @@ dotenv.config();
 // The Pool manages multiple connections to Neon for us
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false, // This allows the connection to Neon's cloud certificate
+  },
 });
 
 // A helper to let us see if the connection is working
