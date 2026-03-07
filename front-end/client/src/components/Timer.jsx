@@ -1,113 +1,94 @@
 import { useState, useEffect } from "react";
 
-/**
- * TIMER COMPONENT
- * ---------------
- * Purpose: A high-precision countdown engine for Pomodoro sessions.
- * @param {Function} onComplete - Callback triggered when the clock hits 00:00.
- * @param {Boolean} isActiveTask - Prevents the timer from starting if no mission is selected.
- */
 const Timer = ({ onComplete, isActiveTask }) => {
-  // 1. STATE: We track time in TOTAL SECONDS (easier for math than tracking mins/secs separately).
-  const [seconds, setSeconds] = useState(0.2 * 60);
+  const [seconds, setSeconds] = useState(25 * 60);
   const [isActive, setIsActive] = useState(false);
 
-  // Inside your Timer component
   const playSuccessSound = () => {
     const audio = new Audio("/success.mp3");
-    audio.volume = 0.5; // 50% volume so we don't scare the user!
-    audio.play().catch((error) => console.log("Audio playback failed:", error));
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
   };
 
-  /**
-   * 2. THE ENGINE (useEffect)
-   * This is the "Gravity" of the app. It pulls the time down every 1000ms.
-   */
   useEffect(() => {
     let interval = null;
-
     if (isActive && seconds > 0) {
-      interval = setInterval(() => {
-        setSeconds((prev) => prev - 1);
-      }, 1000);
+      interval = setInterval(() => setSeconds((prev) => prev - 1), 1000);
     } else if (seconds === 0 && isActive) {
-      playSuccessSound(); // Play sound when timer hits 0
-      // 👈 ADD 'isActive' HERE
+      playSuccessSound();
       clearInterval(interval);
-      setIsActive(false); // Stop the timer
-      onComplete(); // Trigger the modal
-      setSeconds(0.2 * 60); // 👈 RESET seconds to 25 mins immediately
+      setIsActive(false);
+      onComplete();
+      setSeconds(25 * 60);
     }
-
     return () => clearInterval(interval);
   }, [isActive, seconds, onComplete]);
 
-  /**
-   * 3. THE "PILOT MATH" (Formatting)
-   * We take the raw seconds and turn them into a human-readable format.
-   */
-
-  // Math.floor chops off the decimals to give us whole minutes.
   const mins = Math.floor(seconds / 60);
-
-  // The Modulo (%) gives us the remaining seconds after minutes are taken out.
   const secs = seconds % 60;
-
-  // ... (JSX to display the mins and secs follows)
+  const totalSeconds = 25 * 60;
+  const progress = (totalSeconds - seconds) / totalSeconds;
+  const circumference = 2 * Math.PI * 80;
+  const strokeDashoffset = circumference * (1 - progress);
 
   return (
-    <div className="flex flex-col items-center py-4">
-      {/* 1. THE CLOCK FACE */}
-      <div
-        className={`relative flex items-center justify-center w-56 h-56 rounded-full border-4 transition-all duration-700 
-        ${isActive ? "border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.2)]" : "border-slate-100"}`}
-      >
-        <div className="text-center">
-          <span className="text-6xl font-black text-slate-800 tabular-nums tracking-tighter">
-            {mins}:{secs < 10 ? "0" : ""}
-            {secs}
+    <div className="flex flex-col items-center">
+      {/* Clock face */}
+      <div className="relative flex items-center justify-center w-52 h-52">
+        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 180 180">
+          <circle cx="90" cy="90" r="80" fill="none" strokeWidth="5"
+            className="stroke-slate-100 dark:stroke-slate-800" />
+          <circle cx="90" cy="90" r="80" fill="none" strokeWidth="5"
+            strokeLinecap="round"
+            stroke={isActive ? "#7c3aed" : "#ddd6fe"}
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            style={{ transition: "stroke-dashoffset 1s linear, stroke 0.5s ease" }}
+          />
+        </svg>
+        {isActive && (
+          <div className="absolute inset-6 rounded-full bg-violet-500/5 dark:bg-violet-500/10 blur-lg" />
+        )}
+        <div className="relative text-center z-10">
+          <span className="font-display text-5xl font-black text-slate-800 dark:text-white tabular-nums tracking-tighter leading-none">
+            {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
           </span>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">
-            Minutes Left
+          <p className="text-[10px] font-display font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-2">
+            {isActive ? "In Focus" : "Ready"}
           </p>
         </div>
       </div>
 
-      {/* 2. WARNING MESSAGE */}
-      <div className="h-8 mt-6">
+      {/* Status */}
+      <div className="h-8 mt-4 flex items-center">
         {!isActiveTask ? (
-          <p className="text-rose-500 text-xs font-semibold animate-pulse">
+          <p className="text-rose-400 dark:text-rose-500 text-xs font-bold animate-pulse">
             ⚠️ Select a task to begin
           </p>
         ) : (
-          <p className="text-blue-600 text-xs font-bold uppercase tracking-widest">
-            Ready for Flow
+          <p className="text-violet-600 dark:text-violet-400 text-xs font-display font-black uppercase tracking-widest">
+            {isActive ? "● Session Running" : "✦ Ready"}
           </p>
         )}
       </div>
 
-      {/* 3. CONTROL BUTTONS */}
-      <div className="flex gap-4 w-full mt-2">
+      {/* Buttons */}
+      <div className="flex gap-3 w-full mt-3">
         <button
           disabled={!isActiveTask}
           onClick={() => setIsActive(!isActive)}
-          className={`flex-1 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg
-            ${
-              isActive
-                ? "bg-amber-500 text-white shadow-amber-200"
-                : "bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700"
-            } 
-            disabled:opacity-20 disabled:shadow-none disabled:grayscale disabled:cursor-not-allowed`}
+          className={`flex-1 py-3.5 rounded-xl font-display font-black text-sm uppercase tracking-wider transition-all duration-200 active:scale-[0.97] shadow-md
+            ${isActive
+              ? "bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-950/40 hover:bg-amber-400"
+              : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-violet-200 dark:shadow-violet-950/40 hover:from-violet-500 hover:to-indigo-500"
+            }
+            disabled:opacity-25 disabled:shadow-none disabled:cursor-not-allowed`}
         >
-          {isActive ? "Pause" : "Start Session"}
+          {isActive ? "Pause" : "Start"}
         </button>
-
         <button
-          onClick={() => {
-            setIsActive(false);
-            setSeconds(25 * 60);
-          }}
-          className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold text-xs uppercase hover:bg-slate-200 transition-colors"
+          onClick={() => { setIsActive(false); setSeconds(25 * 60); }}
+          className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl font-bold text-xs uppercase tracking-wide hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
         >
           Reset
         </button>
