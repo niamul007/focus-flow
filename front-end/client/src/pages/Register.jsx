@@ -1,183 +1,110 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import API from "../api/axios";
+import { toast } from "react-hot-toast";
 
-/**
- * REGISTER COMPONENT
- * ------------------
- * Purpose: Allows new users to create an account.
- * Key Feature: Includes a 'Confirm Password' safety check.
- */
 const Register = () => {
-  // 1. MULTI-FIELD STATE: Instead of 4 separate states, we use one Object.
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-
+  const [formData, setFormData] = useState({ username: "", email: "", password: "", confirmPassword: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // 2. DESTRUCTURING: Pulling the values out of the object for easy use.
   const { username, email, password, confirmPassword } = formData;
+  const onChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  /**
-   * 3. THE UNIVERSAL INPUT HANDLER
-   * Instead of 4 functions, this one function handles every typing event.
-   * [e.target.name] matches the 'name' attribute on the HTML input.
-   */
-  const onChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  /**
-   * 4. THE SUBMISSION LOGIC
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
-    // A. CLIENT-SIDE VALIDATION: Check passwords before bothering the server.
-    if (password !== confirmPassword) {
-      return setError("Passwords do not match");
-    }
-
+    if (password !== confirmPassword) return setError("Passwords do not match.");
     setIsLoading(true);
     try {
-      // B. THE API CALL: Sending the 'New Pilot' data to the Backend.
-      // Notice we don't send 'confirmPassword' to the server; it's only for us.
       await API.post("/auth/register", { username, email, password });
-
-      alert("Registration successful! Please login.");
-
-      // C. REDIRECT: Once registered, we send them to the Login gate.
+      toast.success("Account created! Please sign in. 🎉");
       navigate("/login");
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Registration failed. Try again.",
-      );
+      setError(err.response?.data?.message || "Registration failed. Try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ... (JSX for the form follows)
+  const inputClass = "w-full px-4 py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none focus:ring-4 focus:ring-violet-500/10 focus:border-violet-400 dark:focus:border-violet-600 font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 text-sm transition-all";
+  const labelClass = "block text-[10px] font-display font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 mb-1.5";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4 font-sans">
-      {/* --- REGISTER CARD --- */}
-      <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/60 p-10 border border-slate-50 relative overflow-hidden">
-        {/* Decorative Background Element */}
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-emerald-50 rounded-full blur-3xl opacity-60"></div>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0f1117] px-4 py-10">
+      {/* Ambient glows */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-32 -right-32 w-80 h-80 bg-indigo-400/10 dark:bg-indigo-500/8 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-violet-400/10 dark:bg-violet-500/8 rounded-full blur-3xl" />
+      </div>
 
-        <div className="text-center mb-8 relative">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500 rounded-2xl shadow-xl shadow-emerald-100 mb-4 text-2xl">
-            🌱
-          </div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-tight">
-            Join the Fleet
-          </h2>
-          <p className="text-slate-400 text-sm font-medium mt-1">
-            Start your journey to peak productivity
-          </p>
-        </div>
+      <div className="relative w-full max-w-md">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-slate-200/60 dark:shadow-black/40 p-9 border border-slate-100 dark:border-slate-800">
 
-        {/* --- ERROR BANNER --- */}
-        {error && (
-          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-2xl text-center">
-            ⚠️ {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-              Username
-            </label>
-            <input
-              name="username"
-              type="text"
-              value={username}
-              onChange={onChange}
-              required
-              placeholder="Ace_Pilot"
-              className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-100 outline-none focus:ring-4 focus:ring-emerald-50 focus:bg-white focus:border-emerald-200 transition-all font-medium text-slate-700 placeholder:text-slate-300"
-            />
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-indigo-950/50 mb-4 text-xl select-none">✨</div>
+            <h1 className="font-display text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              Create account
+            </h1>
+            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">
+              Join FocusFlow and start being productive
+            </p>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-              Email Address
-            </label>
-            <input
-              name="email"
-              type="email"
-              value={email}
-              onChange={onChange}
-              required
-              placeholder="pilot@focusflow.com"
-              className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-100 outline-none focus:ring-4 focus:ring-emerald-50 focus:bg-white focus:border-emerald-200 transition-all font-medium text-slate-700 placeholder:text-slate-300"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                Password
-              </label>
-              <input
-                name="password"
-                type="password"
-                value={password}
-                onChange={onChange}
-                required
-                placeholder="••••"
-                className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-100 outline-none focus:ring-4 focus:ring-emerald-50 focus:bg-white focus:border-emerald-200 transition-all font-medium text-slate-700 placeholder:text-slate-300"
-              />
+          {/* Error */}
+          {error && (
+            <div className="mb-5 p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-xl text-center">
+              ⚠️ {error}
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                Confirm
-              </label>
-              <input
-                name="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={onChange}
-                required
-                placeholder="••••"
-                className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-100 outline-none focus:ring-4 focus:ring-emerald-50 focus:bg-white focus:border-emerald-200 transition-all font-medium text-slate-700 placeholder:text-slate-300"
-              />
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className={labelClass}>Username</label>
+              <input name="username" type="text" value={username} onChange={onChange} required placeholder="Your name" className={inputClass} />
             </div>
-          </div>
+            <div>
+              <label className={labelClass}>Email</label>
+              <input name="email" type="email" value={email} onChange={onChange} required placeholder="you@example.com" className={inputClass} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Password</label>
+                <input name="password" type="password" value={password} onChange={onChange} required placeholder="••••" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Confirm</label>
+                <input name="confirmPassword" type="password" value={confirmPassword} onChange={onChange} required placeholder="••••" className={inputClass} />
+              </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] text-white shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 mt-4
-              ${isLoading ? "bg-slate-300 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100 hover:shadow-emerald-200"}`}
-          >
-            {isLoading ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            ) : (
-              "Complete Registry"
-            )}
-          </button>
-        </form>
-
-        <div className="mt-8 text-center">
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
-            Already registered?{" "}
-            <Link
-              to="/login"
-              className="text-emerald-600 hover:text-emerald-700 transition-colors font-black underline underline-offset-4"
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full py-3.5 rounded-xl font-display font-black text-[11px] uppercase tracking-[0.2em] text-white transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2.5 mt-2 shadow-md
+                ${isLoading ? "bg-slate-300 dark:bg-slate-700 cursor-not-allowed shadow-none" : "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-200 dark:shadow-indigo-950/50"}`}
             >
-              Log In
-            </Link>
-          </p>
+              {isLoading
+                ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : "Create Account →"}
+            </button>
+          </form>
+
+          <div className="mt-7 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
+            <p className="text-slate-400 dark:text-slate-500 text-xs font-medium">
+              Already have an account?{" "}
+              <Link to="/login" className="text-violet-600 dark:text-violet-400 hover:text-violet-500 font-bold transition-colors">
+                Sign in
+              </Link>
+            </p>
+          </div>
         </div>
+
+        <p className="text-center text-[10px] text-slate-300 dark:text-slate-700 font-display font-black uppercase tracking-widest mt-5">
+          FocusFlow · Stay in flow.
+        </p>
       </div>
     </div>
   );
