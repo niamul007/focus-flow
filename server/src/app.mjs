@@ -11,9 +11,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Global Middlewares
-app.use(cors());
-app.use(express.json());
+
 // Replace app.use(cors()) with this:
 app.use(
   cors({
@@ -26,6 +24,9 @@ app.use(
     credentials: true,
   }),
 );
+
+// Global Middlewares
+app.use(express.json());
 
 // Heartbeat
 app.get("/health", (req, res) => {
