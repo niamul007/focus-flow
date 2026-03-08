@@ -1,7 +1,8 @@
 import axios from "axios";
 
+console.log("API URL:", import.meta.env.VITE_API_BASE_URL);
+
 const API = axios.create({
-  // 👇 CHANGE THIS LINE: It checks for a VITE environment variable first
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api", 
 });
 
