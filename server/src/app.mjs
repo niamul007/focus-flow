@@ -23,30 +23,20 @@ const corsOptions = {
   credentials: true,
 };
 
-// Apply CORS to all routes
 app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options("(.*)", cors(corsOptions));
-
-// Global Middlewares
 app.use(express.json());
 
-// Heartbeat
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "FocusFlow Server is flowing... 🌊" });
 });
 
-// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 
-// 404 Handler
 app.use((req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server`, 404));
 });
 
-// Global Error Handler
 app.use(globalErrorHandler);
 
 app.listen(PORT, () => {
