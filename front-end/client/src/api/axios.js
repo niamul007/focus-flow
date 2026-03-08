@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "https://focus-flow-api.onrender.com/api",
+  baseURL: "https://focus-flow-x7gk.onrender.com/api",
 });
 
 API.interceptors.request.use((config) => {
