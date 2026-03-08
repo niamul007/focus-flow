@@ -1,9 +1,7 @@
 import axios from "axios";
 
-console.log("API URL:", import.meta.env.VITE_API_BASE_URL);
-
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api", 
+  baseURL: "https://focus-flow-api.onrender.com/api",
 });
 
 API.interceptors.request.use((config) => {
