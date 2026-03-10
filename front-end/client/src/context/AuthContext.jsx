@@ -4,7 +4,7 @@ import API from "../api/axios";
 /** * 1. THE RADIO TOWER (Context)
  * This creates the 'channel' through which we broadcast user data.
  */
-export const AuthContext = createContext();
+export const AuthContext = createContext(); // is this fn or obj or something else?
 
 export const AuthProvider = ({ children }) => {
   // --- STATE MANAGEMENT ---
