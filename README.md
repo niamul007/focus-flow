@@ -2,7 +2,6 @@
 
 > A full-stack Pomodoro & Task Management application — stay in flow, get things done.
 
-**Live Demo:** [focusflow-frontend-seven.vercel.app](https://focusflow-frontend-seven.vercel.app) &nbsp;|&nbsp; **API:** [focus-flow-x7gk.onrender.com](https://focus-flow-x7gk.onrender.com)
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react) ![Express](https://img.shields.io/badge/Express-Node.js-339933?style=flat&logo=node.js) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?style=flat&logo=postgresql) ![Tailwind](https://img.shields.io/badge/Tailwind-v4-06B6D4?style=flat&logo=tailwindcss) ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat&logo=vercel)
 
